@@ -744,6 +744,92 @@ def evolve_dens_to_files_parallel(
 import os
 import numpy as np
 
+def load_force_results_bv(output_dir="results/force_bv", include_samples=False):
+    """
+    Load the results saved by `compute_forces_bv_to_files`, including sratio and Bx from filename.
+
+    Parameters
+    ----------
+    output_dir : str
+        Directory containing the saved .npz files.
+    include_samples : bool
+        If True, also return raw phase and force sample arrays for each point.
+
+    Returns
+    -------
+    results : dict
+        Dictionary with arrays of all parameters:
+        - 'B', 'v', 'delta', 'Delta', 's', 'sratio', 'Bx'
+        - 'mean_force', 'err'
+        - optionally: 'forces_list', 'phases_list'
+    """
+    Bs, vs, deltas, Deltas, ss, sratios, Bxs = [], [], [], [], [], [], []
+    mean_forces, errs = [], []
+    forces_list, phases_list = [], []
+
+    for fname in sorted(os.listdir(output_dir)):
+        if not (fname.endswith(".npz") and fname.startswith("bv_b")):
+            continue
+
+        # Remove extension
+        fname_base = fname[:-4]
+
+        # Split by _
+        parts = fname_base.split("_")[1:]
+        params = {}
+        for part in parts:
+            if part.startswith("b"):
+                params['B'] = float(part[1:].replace('p','.'))
+            elif part.startswith("v"):
+                params['v'] = float(part[1:].replace('p','.'))
+            elif part.startswith("d"):
+                params['delta'] = float(part[1:].replace('p','.'))
+            elif part.startswith("D"):
+                params['Delta'] = float(part[1:].replace('p','.'))
+            elif part.startswith("sratio"):
+                params['sratio'] = float(part[6:].replace('p','.'))
+            elif part.startswith("Bx"):
+                params['Bx'] = float(part[2:].replace('p','.'))
+            elif part.startswith("s"):
+                params['s'] = float(part[1:].replace('p','.'))
+
+        # Load file
+        path = os.path.join(output_dir, fname)
+        data = np.load(path)
+
+        # Append parsed and loaded values
+        Bs.append(params.get('B'))
+        vs.append(params.get('v'))
+        deltas.append(params.get('delta'))
+        Deltas.append(params.get('Delta'))
+        ss.append(params.get('s'))
+        sratios.append(params.get('sratio'))
+        Bxs.append(params.get('Bx'))
+
+        mean_forces.append(data["mean_force"].item())
+        errs.append(data["err"].item())
+
+        if include_samples:
+            forces_list.append(data["forces"])
+            phases_list.append(data["phases"])
+
+    results = {
+        "B": np.array(Bs),
+        "v": np.array(vs),
+        "delta": np.array(deltas),
+        "Delta": np.array(Deltas),
+        "s": np.array(ss),
+        "sratio": np.array(sratios),
+        "Bx": np.array(Bxs),
+        "mean_force": np.array(mean_forces),
+        "err": np.array(errs)
+    }
+
+    if include_samples:
+        results["forces_list"] = forces_list
+        results["phases_list"] = phases_list
+
+    return results
 
 
 def load_forces_var_B(output_dir: str = "results/force_bv", include_samples: bool = False):
@@ -823,6 +909,66 @@ def load_forces_var_B(output_dir: str = "results/force_bv", include_samples: boo
 
     return results
 
+def load_population_results(output_dir="data"):
+    """
+    Load population results saved by `evolve_dens`.
+
+    Parameters
+    ----------
+    output_dir : str
+        Directory containing the saved .npz files.
+
+    Returns
+    -------
+    results : dict
+        Dictionary with arrays of all parameters:
+        - 'B', 'v', 'd', 'D', 's'
+        - 'rho00', 'rho11', 'rho22', 'excited'
+    """
+    Bs, vs, ds, Ds, ss = [], [], [], [], []
+    rho00_mean, rho11_mean, rho22_mean, excited_mean = [], [], [], []
+    rho00_err, rho11_err, rho22_err, excited_err = [], [], [], []
+
+    for fname in sorted(os.listdir(output_dir)):
+        if not (fname.endswith(".npz") and fname.startswith("pop")):
+            continue
+        
+
+        path = os.path.join(output_dir, fname)
+        data = np.load(path)
+
+        Bs.append(data['b'])
+        vs.append(data['v'])
+        ds.append(data['delta'])
+        Ds.append(data['Delta'])
+        ss.append(data['s'])
+
+        rho00_mean.append(data["mean_rho00"])
+        rho00_err.append(data["err_rho00"])
+        rho11_mean.append(data["mean_rho11"])
+        rho11_err.append(data["err_rho11"])
+        rho22_mean.append(data["mean_rho22"])
+        rho22_err.append(data["err_rho22"])
+        excited_mean.append(data["mean_exc"])
+        excited_err.append(data["err_excited"])
+
+    results = {
+        "B": np.array(Bs),
+        "v": np.array(vs),
+        "d": np.array(ds),
+        "D": np.array(Ds),
+        "s": np.array(ss),
+        "rho00": np.array(rho00_mean),
+        'rho00_err': np.array(rho00_err),
+        "rho11": np.array(rho11_mean),
+        'rho11_err': np.array(rho11_err),
+        "rho22": np.array(rho22_mean),
+        'rho22_err': np.array(rho22_err),
+        "excited": np.array(excited_mean),
+        'excited_err': np.array(excited_err),
+    }
+
+    return results
 
 
 def load_data(x_par, var_par, output_dir):
