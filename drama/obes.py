@@ -210,18 +210,18 @@ def _detect_cpu_quota(default_fallback: int = 1) -> int:
     hints = []
 
     # PBS / Torque / generic environment hints
-    for var in ("PBS_NP", "NCPUS", "OMP_NUM_THREADS"):
-        v = os.environ.get(var)
-        if v and v.isdigit():
-            hints.append(int(v))
-            print(f"PBS cpu quota hint: {int(v)}")
+    # for var in ("PBS_NP", "NCPUS", "OMP_NUM_THREADS"):
+    #     v = os.environ.get(var)
+    #     if v and v.isdigit():
+    #         hints.append(int(v))
+    #         print(f"PBS cpu quota hint: {int(v)}")
 
     # Slurm hints
-    for var in ("SLURM_CPUS_PER_TASK", "SLURM_CPUS_ON_NODE"):
-        v = os.environ.get(var)
-        if v and v.isdigit():
-            hints.append(int(v))
-            print(f"Slurm cpu quota hint: {int(v)}")
+    # for var in ("SLURM_CPUS_PER_TASK", "SLURM_CPUS_ON_NODE"):
+    #     v = os.environ.get(var)
+    #     if v and v.isdigit():
+    #         hints.append(int(v))
+    #         print(f"Slurm cpu quota hint: {int(v)}")
 
     # Linux CPU affinity
     try:
@@ -240,7 +240,7 @@ def _detect_cpu_quota(default_fallback: int = 1) -> int:
     # Pick the smallest positive hint (most conservative)
     valid = [h for h in hints if isinstance(h, int) and h > 0]
     if valid:
-        n = min(valid)
+        n = max(valid)
     else:
         n = default_fallback
 
@@ -278,6 +278,7 @@ def compute_forces_bv_to_files_parallel(
     output_dir: str = "results/force_bv",
     print_progress: bool = False,
     random_relative_phase: bool = False,
+    n_workers = None
 ):
     """
     Compute forces for a list of (B, v) pairs using a flat parallel task list and save each result to .npz files.
@@ -285,12 +286,10 @@ def compute_forces_bv_to_files_parallel(
     """
 
     _set_single_thread_env()
-
+    if n_workers is None:
+        n_workers = _detect_cpu_quota()
     os.makedirs(output_dir, exist_ok=True)
-
-    n_workers = _detect_cpu_quota()
-    n_workers = max(1, int(n_workers))
-    print("Detected worker number: ", n_workers)
+    print("Using worker number: ", n_workers)
     task_list = []
     bv_metadata = {}
 
