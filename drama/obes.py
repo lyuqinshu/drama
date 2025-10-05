@@ -202,6 +202,68 @@ def get_obe(
 
 from collections import defaultdict
 
+def _detect_cpu_quota(default_fallback: int = 1) -> int:
+    """
+    Detect a safe number of worker processes under common schedulers.
+    Takes the minimum of all hints (PBS, Slurm, CPU affinity, etc.).
+    """
+    hints = []
+
+    # PBS / Torque / generic environment hints
+    for var in ("PBS_NP", "NCPUS", "OMP_NUM_THREADS"):
+        v = os.environ.get(var)
+        if v and v.isdigit():
+            hints.append(int(v))
+            print(f"PBS cpu quota hint: {int(v)}")
+
+    # Slurm hints
+    for var in ("SLURM_CPUS_PER_TASK", "SLURM_CPUS_ON_NODE"):
+        v = os.environ.get(var)
+        if v and v.isdigit():
+            hints.append(int(v))
+            print(f"Slurm cpu quota hint: {int(v)}")
+
+    # Linux CPU affinity
+    try:
+        hints.append(len(os.sched_getaffinity(0)))
+        print(f"Linux cpu quota hint: {len(os.sched_getaffinity(0))}")
+    except Exception:
+        pass
+
+    # System CPU count (upper bound)
+    try:
+        hints.append(os.cpu_count() or default_fallback)
+        print(f"Sustem cpu quota hint: {os.cpu_count() or default_fallback}")
+    except Exception:
+        pass
+
+    # Pick the smallest positive hint (most conservative)
+    valid = [h for h in hints if isinstance(h, int) and h > 0]
+    if valid:
+        n = min(valid)
+    else:
+        n = default_fallback
+
+    return max(1, n)
+
+
+
+def _set_single_thread_env():
+    """
+    Force all common threaded math libs to 1 thread inside each worker.
+    This is crucial to avoid oversubscribing cluster CPU quotas.
+    """
+    env_vars = [
+        "OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
+        "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS", "BLIS_NUM_THREADS"
+    ]
+    for v in env_vars:
+        os.environ[v] = "1"
+
+def _pool_initializer():
+    # Called once in each worker
+    _set_single_thread_env()
+
 def compute_forces_bv_to_files_parallel(
     bv_list: list,
     Delta: float,
@@ -219,10 +281,16 @@ def compute_forces_bv_to_files_parallel(
 ):
     """
     Compute forces for a list of (B, v) pairs using a flat parallel task list and save each result to .npz files.
+    Use this to scan B and v
     """
+
+    _set_single_thread_env()
 
     os.makedirs(output_dir, exist_ok=True)
 
+    n_workers = _detect_cpu_quota()
+    n_workers = max(1, int(n_workers))
+    print("Detected worker number: ", n_workers)
     task_list = []
     bv_metadata = {}
 
@@ -273,7 +341,8 @@ def compute_forces_bv_to_files_parallel(
     # Run all simulations in parallel
     from functools import partial
 
-    with Pool() as pool:
+    with Pool(processes=n_workers,
+              initializer=_pool_initializer) as pool:
         results_iter = pool.imap_unordered(lambda args: run_single_task(*args), task_list)
         all_results = []
         for result in tqdm(results_iter, total=len(task_list), desc="Running OBE tasks"):
@@ -334,9 +403,16 @@ def compute_forces_scan_parallel(
 ):
     """
     Compute forces for a scan over (B, v, Delta, delta, s), run all combinations in parallel, save grouped results.
-
+    Use this to scan Delta, delta and s
     """
+
+    _set_single_thread_env()
+
     os.makedirs(output_dir, exist_ok=True)
+
+    n_workers = _detect_cpu_quota()
+    n_workers = max(1, int(n_workers))
+    print("Detected worker number: ", n_workers)
 
     # -------- Build full scan list -------- #
     scan_param_list = []
@@ -390,7 +466,8 @@ def compute_forces_scan_parallel(
 
     # -------- Run in parallel with progress bar -------- #
     all_results = []
-    with Pool() as pool:
+    with Pool(processes=n_workers,
+              initializer=_pool_initializer) as pool:
         results_iter = pool.imap_unordered(lambda args: run_single_task(*args), scan_param_list)
         for result in tqdm(results_iter, total=len(scan_param_list), desc="Running OBE tasks"):
             all_results.append(result)
