@@ -288,6 +288,8 @@ def compute_forces_bv_to_files_parallel(
     _set_single_thread_env()
     if n_workers is None:
         n_workers = _detect_cpu_quota()
+    if n_workers > 128:
+        n_workers = 128
     os.makedirs(output_dir, exist_ok=True)
     print("Using worker number: ", n_workers)
     task_list = []
