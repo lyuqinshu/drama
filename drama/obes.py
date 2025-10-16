@@ -346,7 +346,7 @@ def compute_forces_bv_to_files_parallel(
               initializer=_pool_initializer) as pool:
         results_iter = pool.imap_unordered(lambda args: run_single_task(*args), task_list)
         all_results = []
-        for result in tqdm(results_iter, total=len(task_list), desc="Running OBE tasks"):
+        for result in tqdm(results_iter, total=len(task_list), desc="Running OBE tasks", mininterval=10):
             all_results.append(result)
 
 
@@ -470,7 +470,7 @@ def compute_forces_scan_parallel(
     with Pool(processes=n_workers,
               initializer=_pool_initializer) as pool:
         results_iter = pool.imap_unordered(lambda args: run_single_task(*args), scan_param_list)
-        for result in tqdm(results_iter, total=len(scan_param_list), desc="Running OBE tasks"):
+        for result in tqdm(results_iter, total=len(scan_param_list), desc="Running OBE tasks", mininterval=10):
             all_results.append(result)
 
     # -------- Group and Save Results -------- #
@@ -761,7 +761,7 @@ def evolve_dens_to_files_parallel(
     all_results = []
     with Pool() as pool:
         for result in tqdm(pool.imap_unordered(_run_single_sample, task_list),
-                           total=len(task_list), desc="Running OBE samples"):
+                           total=len(task_list), desc="Running OBE samples", mininterval=10):
             all_results.append(result)
 
     # Group by parameter key
