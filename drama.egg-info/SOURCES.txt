@@ -1,9 +1,0 @@
-README.md
-setup.py
-drama/__init__.py
-drama/analysis.py
-drama/obes.py
-drama.egg-info/PKG-INFO
-drama.egg-info/SOURCES.txt
-drama.egg-info/dependency_links.txt
-drama.egg-info/top_level.txt
