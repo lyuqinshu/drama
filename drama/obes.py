@@ -4,6 +4,7 @@ import scipy.stats as stats
 from pathos.multiprocessing import Pool
 from tqdm import tqdm
 import os
+from typing import Union
 
 def confidence_interval_68(data):
     n = len(data)
@@ -388,10 +389,10 @@ def compute_forces_bv_to_files_parallel(
 
 
 def compute_forces_scan_parallel(
-    bv_list: list,
-    Delta_list: list,
-    delta_list: list,
-    s_list: list,
+    bv_list: Union[np.ndarray, list],
+    Delta_list: Union[np.ndarray, list],
+    delta_list: Union[np.ndarray, list],
+    s_list: Union[np.ndarray, list],
     it_num: int,
     s_ratio: float = 1.0,
     Bx: float = 0.0,
