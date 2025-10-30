@@ -738,7 +738,7 @@ def evolve_dens_to_files_parallel(
             gF_e=gF_e,
         )
         # Example initial conditions (same as original)
-        obe.set_initial_rho_from_populations(np.array([1., 1., 1., 0., 0., 0.]) / 6)
+        obe.set_initial_rho_equally()
         obe.set_initial_position_and_velocity(np.random.normal(0, 2 * np.pi, 3), [0., 0., v])
 
         res = obe.evolve_density([0, time], max_step=1e-1, rtol=1e-12, atol=1e-14, method="DOP853")
