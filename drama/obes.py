@@ -744,10 +744,11 @@ def evolve_dens_to_files_parallel(
 
         res = obe.evolve_density([0, time], max_step=1e-1, rtol=1e-12, atol=1e-14, method="DOP853")
 
+        pops = np.real(np.diag(res.rho))
         rho00 = np.real(res.rho[0, 0])
         rho11 = np.real(res.rho[1, 1])
         rho22 = np.real(res.rho[2, 2])
-        rho_exc = np.real(res.rho[3, 3] + res.rho[4, 4] + res.rho[5, 5])
+        rho_exc = np.real(pops[-1] + pops[-2] + pops[-3])
 
         return (
             B, v, D, d, s_val,
