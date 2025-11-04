@@ -36,7 +36,7 @@ def return_two_level_hamiltonian(Delta, F_g=1, F_e=1, gF_g=1, gF_e=0):
 
 def generate_force_curve(obe, pos, vel):
     import numpy as np
-    return obe.generate_force_profile(pos, vel, deltat_v=2*np.pi*10, deltat_tmax=2*np.pi*200, itermax=10,
+    return obe.generate_force_profile(pos, vel, deltat_v=10, deltat_tmax=2*np.pi*200, itermax=10,
     rel=1e-10, abs=1e-12, method = 'DOP853')
 
 
